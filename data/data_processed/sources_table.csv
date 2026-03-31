@@ -1,0 +1,8 @@
+source_name,path_or_id
+Effectifs d'étudiants étrangers dans les établissements et les formations de l'enseignement supérieur,https://www.data.gouv.fr/api/1/datasets/r/7dfbef75-4fd8-464c-875d-38c4e067969b
+Effectifs d'étudiants inscrits dans les établissements et les formations de l'enseignement supérieur,data/raw/fr-esr-statistiques-sur-les-effectifs-d-etudiants-inscrits-par-etablissement-hcp.csv
+Nouveaux inscrits doctorat,data/raw/fr-esr-nouveaux-inscrits-doctorat-diplome-de-plus-haut-niveau-france-etranger.csv
+HESA UK table 1,https://www.hesa.ac.uk/data-and-analysis/students/table-1
+Eurostat educ_uoe_enrt01,educ_uoe_enrt01
+Eurostat educ_uoe_mobs02,educ_uoe_mobs02
+Eurostat educ_uoe_mobs01,educ_uoe_mobs01
