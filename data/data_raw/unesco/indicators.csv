@@ -1,0 +1,5 @@
+indicatorId,name,theme,lastDataUpdate,lastDataUpdateDescription,dataAvailability.totalRecordCount,dataAvailability.timeLine.min,dataAvailability.timeLine.max,dataAvailability.geoUnits.types,disaggregations,glossaryTerms
+26637,"Total inbound internationally mobile students, both sexes (number)",EDUCATION,02/09/2026,February 2026 Data Release,7394,1997,2025,"REGIONAL, NATIONAL",,3242
+MOR.5T8.40510,"Outbound mobility ratio, all regions, both sexes (UIS estimate) (%)",EDUCATION,02/09/2026,February 2026 Data Release,8962,1997,2023,"REGIONAL, NATIONAL",,2247
+MSEP.5T8,"Inbound mobility rate, both sexes (UIS estimate) (%)",EDUCATION,02/09/2026,February 2026 Data Release,7245,1997,2025,"REGIONAL, NATIONAL",,2246
+OE.5T8.40510,"Total outbound internationally mobile tertiary students studying abroad, all countries, both sexes (UIS estimate) (number)",EDUCATION,02/09/2026,February 2026 Data Release,11332,1997,2023,"REGIONAL, NATIONAL",,3242

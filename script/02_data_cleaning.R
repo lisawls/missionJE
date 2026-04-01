@@ -15,15 +15,23 @@ library(readr)
 # 1. CHEMINS ----
 path_raw <- "data/data_raw"
 path_processed <- "data/data_processed"
+path_clean <- "data/data_clean"
 
 # 2. CHARGEMENT DES DONNEES IMPORTEES ----
 fr_effectifs_etudiants_etrangers_france <- readRDS(file.path(path_processed, "fr_effectifs_etudiants_etrangers_france.rds"))
 fr_effectifs_etab <- readRDS(file.path(path_processed, "fr_effectifs_etab.rds"))
 fr_doctorat_etranger <- readRDS(file.path(path_processed, "fr_doctorat_etranger.rds"))
-uk_hesa_table1 <- readRDS(file.path(path_processed, "uk_hesa_table1.rds"))
+uk_hesa_all <- readRDS(file.path(path_processed, "uk_hesa_all.rds"))
 eu_type_institution <- readRDS(file.path(path_processed, "eu_type_institution.rds"))
 eu_mobility_prev_diploma <- readRDS(file.path(path_processed, "eu_mobility_prev_diploma.rds"))
 eu_mobility_citizenship <- readRDS(file.path(path_processed, "eu_mobility_citizenship.rds"))
+unesco <- readRDS(file.path(path_processed, "unesco.rds"))
+
+# 3. FONCTIONS UTILITAIRES ----
+write_csv_list <- function(data_list, path_processed) {
+  iwalk(
+    data_list,
+    ~ write_csv(.x, file.path(path_clean, paste0(.y, ".csv"))))}
 
 
 # 3. NETTOYAGE FRANCE | EFFECTIFS ETUDIANTS ETRANGERS
@@ -36,16 +44,6 @@ custom_dict <- c(
   "AUTRE PAYS, ETRANGER SANS AUTRE INDICATION" = NA,
   "SANS NATIONALITE" = NA
 )
-
-cols_counts <- c(
-  "total_mobiles", "mob_univ", "mob_ec_commerce", "mob_inge_univ",
-  "mob_inge_hors_univ", "mob_ec_art", "mob_autres_formations",
-  "mob_idf", "mob_auvergnerhonealpes", "mob_occitanie", "mob_grandest",
-  "mob_hautsdefrance", "mob_autres_regions", "total_etrangers",
-  "etr_univ", "etr_ec_commerce", "etr_inge_univ", "etr_inge_hors_univ",
-  "etr_ec_art", "etr_autres_formations", "etr_idf",
-  "etr_auvergnerhonealpes", "etr_occitanie", "etr_grandest",
-  "etr_hautsdefrance", "etr_autres_regions")
 
 fr_effectifs_etudiants_etrangers_france_clean <- fr_effectifs_etudiants_etrangers_france %>% 
   mutate(across(
@@ -61,22 +59,6 @@ fr_effectifs_etudiants_etrangers_france_clean <- fr_effectifs_etudiants_etranger
       custom_match = custom_dict))
 
 # 3. NETTOYAGE FRANCE | EFFECTIFS PAR ETABLISSEMENT ----
-fr_effectifs_etab_clean <- fr_effectifs_etab %>%
-  filter(annee > 2021) %>% 
-  select(annee, annee_universitaire, etablissement, type_detablissement,
-         region_du_siege_de_l_etablissement, cycle_universitaire_cursus_lmd_l_1er_cycle,
-         cycle_universitaire_cursus_lmd_m_2eme_cycle, cycle_universitaire_cursus_lmd_d_3eme_cycle,
-         grande_discipline_droit_sciences_economiques_aes, discipline_sciences_economiques_gestion,
-         nombre_total_detudiants_inscrits_inscriptions_principales_et_secondes_hors_doubles_inscriptions_cpge,
-         attractivite_internationale_etudiants_de_nationalite_etrangere_issus_de_systeme_educatif_etranger) %>%
-  mutate(
-    part_internationaux = if_else(
-      nombre_total_detudiants_inscrits_inscriptions_principales_et_secondes_hors_doubles_inscriptions_cpge > 0,
-      attractivite_internationale_etudiants_de_nationalite_etrangere_issus_de_systeme_educatif_etranger /
-        nombre_total_detudiants_inscrits_inscriptions_principales_et_secondes_hors_doubles_inscriptions_cpge,
-      NA_real_
-    )
-  )
 
 
 # 4. NETTOYAGE FRANCE | DOCTORAT ----
@@ -89,53 +71,63 @@ fr_effectifs_etab_clean <- fr_effectifs_etab %>%
 
 # 8. NETTOYAGE EUROSTAT | MOBILITE PAR CITOYENNETE ----
 
+# NETTOTAGE UNESCO ----
+
+unesco_clean <- unesco %>%
+  mutate(indicator_id = case_when(
+    indicator_id == "26637" ~ "inbound_total",
+    indicator_id == "MOR.5T8.40510" ~ "outbound_mobility_ratio",
+    indicator_id == "OE.5T8.40510" ~ "outbound_total",
+    indicator_id == "MSEP.5T8" ~ "inbound_mobility_rate",
+    TRUE ~ indicator_id
+  )) %>% 
+  select(indicator_id, geo_unit, year, value) %>%
+  pivot_wider(
+    names_from = indicator_id,
+    values_from = value) %>% 
+  filter(year > 2021) %>%
+  filter(str_detect(geo_unit, "^[A-Z]{3}$"))
+
+
 # 14. TABLE DE DICTIONNAIRE MINIMALE ----
 data_dictionary <- tibble(
   object_name = c(
+    "fr_effectifs_etudiants_etrangers_france_clean",
     "fr_effectifs_etab_clean",
     "fr_doctorat_etranger_clean",
     "uk_hesa_table1_clean",
     "eu_type_institution_clean",
     "eu_mobility_prev_diploma_clean",
     "eu_mobility_citizenship_clean",
-    "eu_recent_mobility",
-    "eu_recent_master"
+    "unesco_clean"
   ),
   description = c(
-    "France | effectifs par établissement, noms harmonisés, année si détectée",
-    "France | doctorat, noms harmonisés, année si détectée",
-    "UK | HESA table 1 nettoyée, année standardisée",
-    "Eurostat | inscriptions par type d'institution",
-    "Eurostat | mobilité selon pays du diplôme précédent",
-    "Eurostat | mobilité selon citoyenneté",
-    "Eurostat | base mobilité récente sur 3 ans",
-    "Eurostat | base mobilité récente avec focus master si possible"
+    "France | effectifs d'étudiants étrangers, années récentes, variables numériques harmonisées, code ISO3 ajouté",
+    "France | effectifs par établissement, années récentes, part d'étudiants internationaux calculée",
+    "France | doctorat, nettoyage texte de base",
+    "UK | HESA table 1 nettoyée",
+    "Eurostat | inscriptions par type d'institution, années récentes",
+    "Eurostat | mobilité selon pays du diplôme précédent, années récentes",
+    "Eurostat | mobilité selon citoyenneté, années récentes",
+    "UNESCO | fusion des fichiers entrants, sortants et ratio de mobilité sortante, format large"
   )
 )
+write_xlsx(list(data_dictionary = data_dictionary), path = file.path(path_processed, "data_dictionary_clean.xlsx"))
 
-write_csv(data_dictionary, file.path(path_processed, "data_dictionary_clean.csv"))
 
 # 6. SAUVEGARDE ----
-saveRDS(
-  fr_effectifs_etudiants_etrangers_france_clean,
-  file.path(path_processed, "fr_effectifs_etudiants_etrangers_france_clean.rds")
+clean_datasets <- list(
+  fr_effectifs_etudiants_etrangers_france_clean = fr_effectifs_etudiants_etrangers_france_clean,
+  # fr_effectifs_etab_clean = fr_effectifs_etab_clean,
+  # fr_doctorat_etranger_clean = fr_doctorat_etranger_clean,
+  # uk_hesa_all_clean = uk_hesa_all_clean,
+  # eu_type_institution_clean = eu_type_institution_clean,
+  # eu_mobility_prev_diploma_clean = eu_mobility_prev_diploma_clean,
+  # eu_mobility_citizenship_clean = eu_mobility_citizenship_clean,
+  unesco_clean = unesco_clean
 )
 
-saveRDS(
-  fr_effectifs_etab_clean,
-  file.path(path_processed, "fr_effectifs_etab_clean.rds")
-)
-
-# 7. EXPORT CSV POUR VERIFICATION RAPIDE ----
-write_csv(
-  fr_effectifs_etudiants_etrangers_france_clean,
-  file.path(path_processed, "fr_effectifs_etudiants_etrangers_france_clean.csv")
-)
-
-write_csv(
-  fr_effectifs_etab_clean,
-  file.path(path_processed, "fr_effectifs_etab_clean.csv")
-)
+write_csv_list(clean_datasets, path_processed)
 
 # PISTES D'ANALYSE A AJOUTER ENSUITE
 ###############################################################################
