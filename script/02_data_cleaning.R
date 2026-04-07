@@ -11,6 +11,7 @@ library(stringr)
 library(lubridate)
 library(countrycode)
 library(readr)
+library(writexl)
 
 # 1. CHEMINS ----
 path_raw <- "data/data_raw"
@@ -45,18 +46,21 @@ custom_dict <- c(
   "SANS NATIONALITE" = NA
 )
 
+set.seed(123)
 fr_effectifs_etudiants_etrangers_france_clean <- fr_effectifs_etudiants_etrangers_france %>% 
-  mutate(across(
-    matches("^(total_|mob_|etr_)"),
-    ~ as.numeric(ifelse(.x == "<5", "2.5", .x))
-  ), rentree = as.numeric(rentree)) %>% 
-  filter(rentree > 2021) %>% 
+  mutate(rentree = as.numeric(rentree)) %>% 
+  filter(rentree >= 2021) %>% 
   mutate(
     iso3 = countrycode(
       nationalite,
       origin = "country.name.fr",
       destination = "iso3c",
-      custom_match = custom_dict))
+      custom_match = custom_dict),
+    across(
+    matches("^(total_|mob_|etr_)"),
+    ~ as.numeric(ifelse(.x == "<5", sample(0:4, length(.), replace = TRUE), .))))
+
+
 
 # 3. NETTOYAGE FRANCE | EFFECTIFS PAR ETABLISSEMENT ----
 
@@ -110,8 +114,7 @@ data_dictionary <- tibble(
     "Eurostat | mobilité selon pays du diplôme précédent, années récentes",
     "Eurostat | mobilité selon citoyenneté, années récentes",
     "UNESCO | fusion des fichiers entrants, sortants et ratio de mobilité sortante, format large"
-  )
-)
+  ))
 write_xlsx(list(data_dictionary = data_dictionary), path = file.path(path_processed, "data_dictionary_clean.xlsx"))
 
 

@@ -28,11 +28,21 @@ unesco <- read_csv(file.path(path_clean, "unesco_clean.csv"))
 # 3. DESCRIPTIF GLOBAL DES FLUX ----
 # 3.1 Top nationalités sur la période récente
 # Top nationalités sur la période récente
-top_pays <- fr_effectifs_etudiants_etrangers_france %>% 
+top_pays <- fr_effectifs_etudiants_etrangers_france_clean %>% 
   group_by(nationalite) %>% 
   summarise(total_mobiles_3ans = sum(total_mobiles, na.rm = TRUE)) %>% 
   arrange(desc(total_mobiles_3ans))
-print(top_pays, n = 20)
+
+top_pays <- fr_effectifs_etudiants_etrangers_france %>% 
+  group_by(iso3) %>% 
+  summarise(total_mobiles_3ans = sum(total_mobiles, na.rm = TRUE)) %>% 
+  arrange(desc(total_mobiles_3ans))
+
+top_zone_geo <- fr_effectifs_etudiants_etrangers_france %>% 
+  group_by(zone_geographique_d_origine) %>% 
+  summarise(total_mobiles_3ans = sum(total_mobiles, na.rm = TRUE)) %>% 
+  arrange(desc(total_mobiles_3ans))
+
 
 # 3.2 Evolution des 10 premières nationalités
 top10 <- top_pays %>% 

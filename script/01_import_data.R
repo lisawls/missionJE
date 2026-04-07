@@ -54,6 +54,7 @@ get_eurostat_clean <- function(id) {
     clean_base()}
 
 # 3. IMPORT DES DONNEES ----
+liste_pays <- read_delim_clean(file.path(path_raw, "curiexplore-pays.csv"))
 
 fr_effectifs_etudiants_etrangers_france <- GET(
   "https://www.data.gouv.fr/api/1/datasets/r/7dfbef75-4fd8-464c-875d-38c4e067969b"
@@ -86,6 +87,7 @@ unesco <- read_csv_clean(file.path(path_raw, "unesco", "data.csv"))
 # 4. SAUVEGARDE INTERMEDIAIRE ----
 
 datasets <- list(
+  liste_pays = liste_pays,
   fr_effectifs_etudiants_etrangers_france = fr_effectifs_etudiants_etrangers_france,
   fr_effectifs_etab = fr_effectifs_etab,
   fr_doctorat_etranger = fr_doctorat_etranger,
@@ -105,6 +107,11 @@ iwalk(
 
 sources_table <- tribble(
   ~source_name, ~object_name, ~source_type, ~project_path, ~source_link,
+  "Liste des pays et territoires", "liste_pays", "local_csv", 
+  "data/data_raw/curiexplore-pays.csv",
+  "https://data.enseignementsup-recherche.gouv.fr/explore/assets/curiexplore-pays/",
+
+  
   "Effectifs d'étudiants étrangers dans les établissements et les formations de l'enseignement supérieur",
   "fr_effectifs_etudiants_etrangers_france", "api_download", NA,
   "https://www.data.gouv.fr/api/1/datasets/r/7dfbef75-4fd8-464c-875d-38c4e067969b",
