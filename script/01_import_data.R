@@ -12,6 +12,7 @@ library(janitor)
 library(readr)
 library(eurostat)
 library(writexl)
+library(data.table)
 
 # 1. CHEMINS ----
 path_raw <- "data/data_raw"
@@ -62,8 +63,10 @@ fr_effectifs_etudiants_etrangers_france <- GET(
   content(as = "text", encoding = "UTF-8") %>%
   fromJSON()
 
-fr_effectifs_etab <- read_delim_clean(
-  file.path(path_raw, "fr-esr-statistiques-sur-les-effectifs-d-etudiants-inscrits-par-etablissement-hcp.csv"))
+fr_effectifs_etablissement_2024 <- fread(file.path(path_raw, "fr-esr-sise-effectifs-d-etudiants-inscrits-esr-public/fr-esr-sise-effectifs-d-etudiants-inscrits-esr-public_2024_2025.csv")) %>% 
+  clean_base()
+
+
 
 fr_doctorat_etranger <- read_delim_clean(
   file.path(path_raw, "fr-esr-nouveaux-inscrits-doctorat-diplome-de-plus-haut-niveau-france-etranger.csv"))
