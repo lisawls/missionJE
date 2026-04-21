@@ -21,7 +21,6 @@ path_clean <- "data/data_clean"
 # 2. CHARGEMENT DES DONNEES IMPORTEES ----
 fr_effectifs_etudiants_etrangers_france <- readRDS(file.path(path_processed, "fr_effectifs_etudiants_etrangers_france.rds"))
 fr_effectifs_etab <- readRDS(file.path(path_processed, "fr_effectifs_etab.rds"))
-fr_doctorat_etranger <- readRDS(file.path(path_processed, "fr_doctorat_etranger.rds"))
 uk_hesa_all <- readRDS(file.path(path_processed, "uk_hesa_all.rds"))
 eu_type_institution <- readRDS(file.path(path_processed, "eu_type_institution.rds"))
 eu_mobility_prev_diploma <- readRDS(file.path(path_processed, "eu_mobility_prev_diploma.rds"))
@@ -36,28 +35,36 @@ write_csv_list <- function(data_list, path_processed) {
 
 
 # 3. NETTOYAGE FRANCE | EFFECTIFS ETUDIANTS ETRANGERS
-custom_dict <- c(
-  "BIRMANIE" = "MMR",                # Myanmar
-  "KOSOVO" = "XKX",                 # code non officiel mais utilisé
-  "REPUBLIQUE TCHEQUE" = "CZE",     # Czechia
-  "GUINEE EQUATORIALE" = "GNQ",
-  "ACORES" = "PRT",                 # région du Portugal
-  "AUTRE PAYS, ETRANGER SANS AUTRE INDICATION" = NA,
-  "SANS NATIONALITE" = NA
-)
-
 fr_effectifs_etudiants_etrangers_france_clean <- fr_effectifs_etudiants_etrangers_france %>% 
-  mutate(across(
-    matches("^(total_|mob_|etr_)"),
-    ~ as.numeric(ifelse(.x == "<5", "2.5", .x))
-  ), rentree = as.numeric(rentree)) %>% 
   filter(rentree >= 2021) %>% 
   mutate(
-    iso3 = countrycode(
-      nationalite,
-      origin = "country.name.fr",
-      destination = "iso3c",
-      custom_match = custom_dict))
+    iso3 = case_when(
+      nationalite == "ACORES" ~ "PRT",
+      nationalite == "KOSOVO" ~ "XKX",
+      TRUE ~ iso3),
+    name_fr = case_when(
+      nationalite == "ACORES" ~ "Portugal",
+      nationalite == "KOSOVO" ~ "Kosovo",
+      TRUE ~ name_fr),
+    zone_geographique_d_origine = case_when(
+      nationalite == "ACORES" ~ "Europe",
+      TRUE ~ zone_geographique_d_origine), 
+    bologne = case_when(
+      nationalite == "ACORES" ~ TRUE,
+      nationalite == "KOSOVO" ~ FALSE,
+      TRUE ~ as.logical(bologne)),
+    oecd_members = case_when(
+      nationalite == "ACORES" ~ TRUE,
+      nationalite == "KOSOVO" ~ FALSE,
+      TRUE ~ as.logical(oecd_members)),
+    ue27 = case_when(
+      nationalite == "ACORES" ~ TRUE,
+      nationalite == "KOSOVO" ~ FALSE,
+      TRUE ~ as.logical(ue27)), 
+    across(
+    matches("^(total_|mob_|etr_)"),
+    ~ as.numeric(ifelse(.x == "<5", "2", .x))), 
+    rentree = as.numeric(rentree))
 
 # 3. NETTOYAGE FRANCE | EFFECTIFS PAR ETABLISSEMENT ----
 

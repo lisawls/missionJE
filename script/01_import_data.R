@@ -19,7 +19,6 @@ path_raw <- "data/data_raw"
 path_processed <- "data/data_processed"
 
 # 2. FONCTIONS UTILITAIRES ----
-
 clean_base <- function(df) {
   df %>%
     clean_names() %>%
@@ -32,8 +31,7 @@ clean_base <- function(df) {
           na_if("") %>%
           na_if("...") %>%
           na_if("NA") %>%
-          na_if("N/A")
-      ))}
+          na_if("N/A")))}
 
 read_csv_clean <- function(path, ...) {
   read_csv(path, show_col_types = FALSE, ...) %>%
@@ -58,28 +56,21 @@ get_eurostat_clean <- function(id) {
 liste_pays <- read_delim_clean(file.path(path_raw, "curiexplore-pays.csv"))
 
 fr_effectifs_etudiants_etrangers_france <- GET(
-  "https://www.data.gouv.fr/api/1/datasets/r/7dfbef75-4fd8-464c-875d-38c4e067969b"
-) %>%
+  "https://www.data.gouv.fr/api/1/datasets/r/7dfbef75-4fd8-464c-875d-38c4e067969b") %>%
   content(as = "text", encoding = "UTF-8") %>%
   fromJSON()
 
+fr_effectifs_etablissement_2022 <- fread(file.path(path_raw, "fr-esr-sise-effectifs-d-etudiants-inscrits-esr-public/fr-esr-sise-effectifs-d-etudiants-inscrits-esr-public_2022_2023.csv")) %>% 
+  clean_base()
+fr_effectifs_etablissement_2023 <- fread(file.path(path_raw, "fr-esr-sise-effectifs-d-etudiants-inscrits-esr-public/fr-esr-sise-effectifs-d-etudiants-inscrits-esr-public_2023_2024.csv")) %>% 
+  clean_base()
 fr_effectifs_etablissement_2024 <- fread(file.path(path_raw, "fr-esr-sise-effectifs-d-etudiants-inscrits-esr-public/fr-esr-sise-effectifs-d-etudiants-inscrits-esr-public_2024_2025.csv")) %>% 
   clean_base()
 
-
-
-fr_doctorat_etranger <- read_delim_clean(
-  file.path(path_raw, "fr-esr-nouveaux-inscrits-doctorat-diplome-de-plus-haut-niveau-france-etranger.csv"))
-
 years <- c("2021-22", "2022-23", "2023-24", "2024-25")
-uk_hesa_all <- data.frame()
-for (y in years) {
-  temp <- read_csv_clean(
-    file.path(path_raw, paste0("hesa_uk_data/table-1-(", y, ").csv")),
-    skip = 13
-  )
-  uk_hesa_all <- rbind(uk_hesa_all, temp)}
-
+uk_hesa_all <- map_dfr(years, ~ read_csv_clean(
+  file.path(path_raw, paste0("hesa_uk/table-1-(", .x, ").csv")),
+  skip = 13))
 
 eu_type_institution <- get_eurostat_clean("educ_uoe_enrt01")
 eu_mobility_prev_diploma <- get_eurostat_clean("educ_uoe_mobs02")
@@ -88,23 +79,21 @@ eu_mobility_citizenship <- get_eurostat_clean("educ_uoe_mobs01")
 unesco <- read_csv_clean(file.path(path_raw, "unesco", "data.csv"))
 
 # 4. SAUVEGARDE INTERMEDIAIRE ----
-
 datasets <- list(
   liste_pays = liste_pays,
   fr_effectifs_etudiants_etrangers_france = fr_effectifs_etudiants_etrangers_france,
-  fr_effectifs_etab = fr_effectifs_etab,
-  fr_doctorat_etranger = fr_doctorat_etranger,
+  fr_effectifs_etablissement_2022 = fr_effectifs_etablissement_2022,
+  fr_effectifs_etablissement_2023 = fr_effectifs_etablissement_2023,
+  fr_effectifs_etablissement_2024 = fr_effectifs_etablissement_2024,
   uk_hesa_all = uk_hesa_all,
   eu_type_institution = eu_type_institution,
   eu_mobility_prev_diploma = eu_mobility_prev_diploma,
   eu_mobility_citizenship = eu_mobility_citizenship,
-  unesco = unesco
-)
+  unesco = unesco)
 
 iwalk(
   datasets,
-  ~ saveRDS(.x, file.path(path_processed, paste0(.y, ".rds")))
-)
+  ~ saveRDS(.x, file.path(path_processed, paste0(.y, ".rds"))))
 
 # 5. TABLE DE SUIVI DES SOURCES ----
 
@@ -114,20 +103,14 @@ sources_table <- tribble(
   "data/data_raw/curiexplore-pays.csv",
   "https://data.enseignementsup-recherche.gouv.fr/explore/assets/curiexplore-pays/",
 
-  
   "Effectifs d'étudiants étrangers dans les établissements et les formations de l'enseignement supérieur",
   "fr_effectifs_etudiants_etrangers_france", "api_download", NA,
   "https://www.data.gouv.fr/api/1/datasets/r/7dfbef75-4fd8-464c-875d-38c4e067969b",
   
-  "Effectifs d'étudiants inscrits dans les établissements et les formations de l'enseignement supérieur",
-  "fr_effectifs_etab", "local_csv",
-  "data/data_raw/fr-esr-atlas_regional-effectifs-d-etudiants-inscrits_agregeables.csv",
-  "https://data.enseignementsup-recherche.gouv.fr/explore/dataset/fr-esr-atlas_regional-effectifs-d-etudiants-inscrits_agregeables/information/?disjunctive.rgp_formations_ou_etablissements",
-  
-  "Nouveaux inscrits doctorat",
-  "fr_doctorat_etranger", "local_csv",
-  "data/data_raw/fr-esr-nouveaux-inscrits-doctorat-diplome-de-plus-haut-niveau-france-etranger.csv",
-  "https://data.enseignementsup-recherche.gouv.fr/explore/assets/fr-esr-nouveaux-inscrits-doctorat-diplome-de-plus-haut-niveau-france-etranger/",
+  "Effectifs d'étudiants inscrits dans les établissements publics sous tutelle du ministère en charge de l’Enseignement supérieur",
+  "fr_effectifs_etablissement_202*", "local_csv",
+  "data/data_raw/fr-esr-sise-effectifs-d-etudiants-inscrits-esr-public/fr-esr-sise-effectifs-d-etudiants-inscrits-esr-public_202*_202*.csv",
+  "https://data.enseignementsup-recherche.gouv.fr/explore/dataset/fr-esr-sise-effectifs-d-etudiants-inscrits-esr-public/?tab=metas",
   
   "HESA UK",
   "uk_hesa_all", "local_csv",
