@@ -4,7 +4,7 @@
 # Objet   : nettoyer, harmoniser et documenter les données importées
 ###############################################################################
 
-# 0. PACKAGES ----
+# PACKAGES ----
 library(tidyverse)
 library(janitor)
 library(stringr)
@@ -13,28 +13,30 @@ library(countrycode)
 library(readr)
 library(writexl)
 
-# 1. CHEMINS ----
+# CHEMINS ----
 path_raw <- "data/data_raw"
 path_processed <- "data/data_processed"
 path_clean <- "data/data_clean"
 
-# 2. CHARGEMENT DES DONNEES IMPORTEES ----
+# CHARGEMENT DES DONNEES IMPORTEES ----
 fr_effectifs_etudiants_etrangers_france <- readRDS(file.path(path_processed, "fr_effectifs_etudiants_etrangers_france.rds"))
-fr_effectifs_etab <- readRDS(file.path(path_processed, "fr_effectifs_etab.rds"))
-uk_hesa_all <- readRDS(file.path(path_processed, "uk_hesa_all.rds"))
-eu_type_institution <- readRDS(file.path(path_processed, "eu_type_institution.rds"))
-eu_mobility_prev_diploma <- readRDS(file.path(path_processed, "eu_mobility_prev_diploma.rds"))
-eu_mobility_citizenship <- readRDS(file.path(path_processed, "eu_mobility_citizenship.rds"))
+fr_effectifs_etablissement_2022 <- readRDS(file.path(path_processed, "fr_effectifs_etablissement_2022.rds"))
+fr_effectifs_etablissement_2023 <- readRDS(file.path(path_processed, "fr_effectifs_etablissement_2023.rds"))
+fr_effectifs_etablissement_2024 <- readRDS(file.path(path_processed, "fr_effectifs_etablissement_2024.rds"))
+# uk_hesa_all <- readRDS(file.path(path_processed, "uk_hesa_all.rds"))
+# eu_type_institution <- readRDS(file.path(path_processed, "eu_type_institution.rds"))
+# eu_mobility_prev_diploma <- readRDS(file.path(path_processed, "eu_mobility_prev_diploma.rds"))
+# eu_mobility_citizenship <- readRDS(file.path(path_processed, "eu_mobility_citizenship.rds"))
 unesco <- readRDS(file.path(path_processed, "unesco.rds"))
 
-# 3. FONCTIONS UTILITAIRES ----
+# FONCTIONS UTILITAIRES ----
 write_csv_list <- function(data_list, path_processed) {
   iwalk(
     data_list,
     ~ write_csv(.x, file.path(path_clean, paste0(.y, ".csv"))))}
 
 
-# 3. NETTOYAGE FRANCE | EFFECTIFS ETUDIANTS ETRANGERS
+# NETTOYAGE FRANCE | EFFECTIFS ETUDIANTS ETRANGERS
 fr_effectifs_etudiants_etrangers_france_clean <- fr_effectifs_etudiants_etrangers_france %>% 
   filter(rentree >= 2021) %>% 
   mutate(
@@ -66,21 +68,14 @@ fr_effectifs_etudiants_etrangers_france_clean <- fr_effectifs_etudiants_etranger
     ~ as.numeric(ifelse(.x == "<5", "2", .x))), 
     rentree = as.numeric(rentree))
 
-# 3. NETTOYAGE FRANCE | EFFECTIFS PAR ETABLISSEMENT ----
+# NETTOYAGE FRANCE | EFFECTIFS ETUDIANTS ETRANGERS ETABLISSEMENTS
+etabs_cibles <- c("Sciences Po", "Université Paris Dauphine - PSL", "Université Toulouse Capitole", "Université Paris 1 - Panthéon Sorbonne")
+fr_effectifs_etablissement_2022 <- fr_effectifs_etablissement_2022 %>% filter(etablissement %in% etabs_cibles)
+fr_effectifs_etablissement_2023 <- fr_effectifs_etablissement_2023 %>% filter(etablissement %in% etabs_cibles)
+fr_effectifs_etablissement_2024 <- fr_effectifs_etablissement_2024 %>% filter(etablissement %in% etabs_cibles)
 
-
-# 4. NETTOYAGE FRANCE | DOCTORAT ----
-
-# 5. NETTOYAGE UK | HESA ----
-
-# 6. NETTOYAGE EUROSTAT | TYPE D'INSTITUTION ----
-
-# 7. NETTOYAGE EUROSTAT | MOBILITE PAR DIPLOME PRECEDENT ----
-
-# 8. NETTOYAGE EUROSTAT | MOBILITE PAR CITOYENNETE ----
 
 # NETTOTAGE UNESCO ----
-
 unesco_clean <- unesco %>%
   mutate(indicator_id = case_when(
     indicator_id == "26637" ~ "inbound_total",
@@ -96,52 +91,16 @@ unesco_clean <- unesco %>%
   filter(year > 2021) %>%
   filter(str_detect(geo_unit, "^[A-Z]{3}$"))
 
-
-# 14. TABLE DE DICTIONNAIRE MINIMALE ----
-data_dictionary <- tibble(
-  object_name = c(
-    "fr_effectifs_etudiants_etrangers_france_clean",
-    "fr_effectifs_etab_clean",
-    "fr_doctorat_etranger_clean",
-    "uk_hesa_table1_clean",
-    "eu_type_institution_clean",
-    "eu_mobility_prev_diploma_clean",
-    "eu_mobility_citizenship_clean",
-    "unesco_clean"
-  ),
-  description = c(
-    "France | effectifs d'étudiants étrangers, années récentes, variables numériques harmonisées, code ISO3 ajouté",
-    "France | effectifs par établissement, années récentes, part d'étudiants internationaux calculée",
-    "France | doctorat, nettoyage texte de base",
-    "UK | HESA table 1 nettoyée",
-    "Eurostat | inscriptions par type d'institution, années récentes",
-    "Eurostat | mobilité selon pays du diplôme précédent, années récentes",
-    "Eurostat | mobilité selon citoyenneté, années récentes",
-    "UNESCO | fusion des fichiers entrants, sortants et ratio de mobilité sortante, format large"
-  )
-)
-write_xlsx(list(data_dictionary = data_dictionary), path = file.path(path_processed, "data_dictionary_clean.xlsx"))
-
-
-# 6. SAUVEGARDE ----
+# SAUVEGARDE ----
 clean_datasets <- list(
   fr_effectifs_etudiants_etrangers_france_clean = fr_effectifs_etudiants_etrangers_france_clean,
-  # fr_effectifs_etab_clean = fr_effectifs_etab_clean,
-  # fr_doctorat_etranger_clean = fr_doctorat_etranger_clean,
+  fr_effectifs_etablissement_2022 = fr_effectifs_etablissement_2022,
+  fr_effectifs_etablissement_2023 = fr_effectifs_etablissement_2023,
+  fr_effectifs_etablissement_2024 = fr_effectifs_etablissement_2024,
   # uk_hesa_all_clean = uk_hesa_all_clean,
   # eu_type_institution_clean = eu_type_institution_clean,
   # eu_mobility_prev_diploma_clean = eu_mobility_prev_diploma_clean,
   # eu_mobility_citizenship_clean = eu_mobility_citizenship_clean,
-  unesco_clean = unesco_clean
-)
+  unesco_clean = unesco_clean)
 
 write_csv_list(clean_datasets, path_processed)
-
-# PISTES D'ANALYSE A AJOUTER ENSUITE
-###############################################################################
-# 1. Isoler autant que possible les niveaux master et licence
-# 2. Distinguer mobilité diplômante et mobilité d'échange
-# 3. Construire un focus Toulouse / Occitanie / France
-# 4. Comparer TSE à des établissements cibles
-# 5. Vérifier l'offre de formations en anglais au niveau master
-# 6. Construire un focus Royaume-Uni post-Covid
