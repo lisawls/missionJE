@@ -301,7 +301,7 @@ write_xlsx(
 write_xlsx(
   list(
     "occitanie_part_region"      = top_pays_occitanie_2024_region,
-    "top_pays_idf_2024_region" = top_pays_idf_2024_region
+    "top_pays_idf_2024_region" = top_pays_idf_2024_region,
     "occitanie_part_nationalite" = top_pays_occitanie_2024_nationalite,
     "regions"                    = regions
   ),
