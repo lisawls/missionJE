@@ -117,6 +117,27 @@ plot_evol_top10 <- ggplot(evol_top10, aes(x = rentree, y = part, group = nationa
   ) +
   theme_minimal()
 
+plot_evol_top10_abs <- ggplot(evol_top10, 
+                              aes(x = rentree, y = total_mobiles, group = nationalite, color = nationalite)) +
+  geom_line(linewidth = 1) +
+  geom_point() +
+  geom_text(
+    data = labels_evol,
+    aes(label = scales::number(total_mobiles, big.mark = " ")),
+    vjust = -0.8,
+    size = 3,
+    show.legend = FALSE
+  ) +
+  scale_y_continuous(labels = scales::number_format(big.mark = " ")) +
+  scale_color_brewer(palette = "Paired") +
+  labs(
+    title = "Évolution en volume des top 10 nationalités (2024-2025)",
+    x = "Rentrée universitaire",
+    y = "Effectif",
+    color = ""
+  ) +
+  theme_minimal()
+
 # 4.4 Top 10 des nationalités en écoles d'ingénieurs et de commerce en 2024 avec comparaison université pour ces mêmes pays
 top_pays_univ_vs_com_inge_2024 <- fr_effectifs_etudiants_etrangers_france %>% 
   filter(rentree == "2024") %>% 
@@ -196,16 +217,6 @@ formations <- fr_effectifs_etudiants_etrangers_france %>%
   pivot_longer(everything(), names_to = "filiere", values_to = "effectif") %>% 
   mutate(part = effectif / sum(effectif))
 
-ggplot(formations, aes(x = reorder(filiere, effectif), y = effectif)) +
-  geom_col() +
-  coord_flip() +
-  labs(
-    title = "Répartition des étudiants mobiles par type de formation",
-    x = "",
-    y = "Effectifs"
-  ) +
-  theme_minimal()
-
 # 6. DESCRIPTIF TERRITORIAL ----
 regions <- fr_effectifs_etudiants_etrangers_france %>% 
   summarise(
@@ -220,6 +231,7 @@ regions <- fr_effectifs_etudiants_etrangers_france %>%
   mutate(part = effectif / sum(effectif))
 
 # Part dans le total Occitanie (qui domine en Occitanie ?)
+# Ex : "30% des étudiants mobiles en Occitanie sont marocains"
 top_pays_occitanie_2024_region <- fr_effectifs_etudiants_etrangers_france %>%
   filter(rentree == "2024") %>%
   mutate(part_occitanie = mob_occitanie / sum(mob_occitanie, na.rm = TRUE)) %>%
@@ -227,7 +239,15 @@ top_pays_occitanie_2024_region <- fr_effectifs_etudiants_etrangers_france %>%
   slice_head(n = 15) %>%
   select(nationalite, part_occitanie)
 
-# Part en Occitanie parmi les mobiles de cette nationalité en France (quelle nationalité "choisit" l'Occitanie ?)
+top_pays_idf_2024_region <- fr_effectifs_etudiants_etrangers_france %>%
+  filter(rentree == "2024") %>%
+  mutate(part_idf = mob_idf / sum(mob_idf, na.rm = TRUE)) %>%
+  arrange(desc(mob_idf)) %>%
+  slice_head(n = 15) %>%
+  select(nationalite, part_idf)
+
+# Part en Occitanie parmi les mobiles de cette nationalité en France
+# Ex : "15% des étudiants marocains mobiles en France sont en Occitanie"
 top_pays_occitanie_2024_nationalite <- fr_effectifs_etudiants_etrangers_france %>%
   filter(rentree == "2024") %>%
   mutate(part_occitanie = mob_occitanie / total_mobiles) %>%
@@ -265,6 +285,7 @@ etablissement_all <- annees %>%
 ggsave(file.path(path_outputs, "evol_top10_parts.png"),              plot_evol_top10,                      width = 12, height = 7, bg = "white")
 ggsave(file.path(path_outputs, "effectifs_univ_vs_com_inge_2024.png"), plot_effectifs_univ_vs_com_inge_2024, width = 10, height = 6, bg = "white")
 ggsave(file.path(path_outputs, "parts_univ_vs_com_inge_2024.png"),   plot_parts_univ_vs_com_inge_2024,     width = 10, height = 6, bg = "white")
+ggsave(file.path(path_outputs, "evol_top10_abs.png"),                plot_evol_top10_abs,                  width = 12, height = 7, bg = "white")
 
 # Tableaux Excel
 write_xlsx(
@@ -275,6 +296,16 @@ write_xlsx(
     "top10_parts_univ_com_inge"     = top_pays_univ_vs_com_inge_2024_percent
   ),
   file.path(path_outputs, "descriptif_nationalites_2024.xlsx")
+)
+
+write_xlsx(
+  list(
+    "occitanie_part_region"      = top_pays_occitanie_2024_region,
+    "top_pays_idf_2024_region" = top_pays_idf_2024_region
+    "occitanie_part_nationalite" = top_pays_occitanie_2024_nationalite,
+    "regions"                    = regions
+  ),
+  file.path(path_outputs, "descriptif_territorial.xlsx")
 )
 
 write_xlsx(etablissement_all, file.path(path_outputs, "mobilite_internationale_etablissements.xlsx"))
