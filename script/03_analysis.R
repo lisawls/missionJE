@@ -19,8 +19,6 @@ fr_effectifs_etudiants_etrangers_france <- read_csv(file.path(path_clean, "fr_ef
 fr_effectifs_etablissement_2022 <- read_csv(file.path(path_clean, "fr_effectifs_etablissement_2022.csv"))
 fr_effectifs_etablissement_2023 <- read_csv(file.path(path_clean, "fr_effectifs_etablissement_2023.csv"))
 fr_effectifs_etablissement_2024 <- read_csv(file.path(path_clean, "fr_effectifs_etablissement_2024.csv"))
-
-
 # uk_hesa_all <- read_csv(file.path(path_clean, "uk_hesa_clean.csv"))
 # eu_type_institution <- read_csv(file.path(path_clean, "eu_type_institution_clean.csv"))
 # eu_mobility_prev_diploma <- read_csv(file.path(path_clean, "eu_mobility_prev_diploma_clean.csv"))
