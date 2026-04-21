@@ -219,6 +219,25 @@ regions <- fr_effectifs_etudiants_etrangers_france %>%
   pivot_longer(everything(), names_to = "region", values_to = "effectif") |>
   mutate(part = effectif / sum(effectif))
 
+# Part dans le total Occitanie (qui domine en Occitanie ?)
+top_pays_occitanie_2024_region <- fr_effectifs_etudiants_etrangers_france %>%
+  filter(rentree == "2024") %>%
+  mutate(part_occitanie = mob_occitanie / sum(mob_occitanie, na.rm = TRUE)) %>%
+  arrange(desc(mob_occitanie)) %>%
+  slice_head(n = 15) %>%
+  select(nationalite, part_occitanie)
+
+# Part en Occitanie parmi les mobiles de cette nationalité en France (quelle nationalité "choisit" l'Occitanie ?)
+top_pays_occitanie_2024_nationalite <- fr_effectifs_etudiants_etrangers_france %>%
+  filter(rentree == "2024") %>%
+  mutate(part_occitanie = mob_occitanie / total_mobiles) %>%
+  arrange(desc(mob_occitanie)) %>%
+  slice_head(n = 15) %>%
+  select(nationalite, part_occitanie)
+
+  
+  
+  
 # 7. DESCRIPTIF UNESCO ----
 unesco %>%
   arrange(desc(outbound_mobility_ratio)) %>% slice_head(n = 15)
