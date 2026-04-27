@@ -56,28 +56,23 @@ make_etablissements <- function(data, cursus = NULL) {
       summarise_mobilite(cursus) %>% mutate(label = "Université Paris 1 - Panthéon Sorbonne (Sciences Economiques)")
   ) %>% relocate(label)}
 
-
 # 3. CHARGEMENT DES DONNEES ----
 fr_effectifs_etudiants_etrangers_france <- read_csv(file.path(path_clean, "fr_effectifs_etudiants_etrangers_france_clean.csv"))
 fr_effectifs_etablissement_2022 <- read_csv(file.path(path_clean, "fr_effectifs_etablissement_2022.csv"))
 fr_effectifs_etablissement_2023 <- read_csv(file.path(path_clean, "fr_effectifs_etablissement_2023.csv"))
 fr_effectifs_etablissement_2024 <- read_csv(file.path(path_clean, "fr_effectifs_etablissement_2024.csv"))
-# uk_hesa_all <- read_csv(file.path(path_clean, "uk_hesa_clean.csv"))
-# eu_type_institution <- read_csv(file.path(path_clean, "eu_type_institution_clean.csv"))
-# eu_mobility_prev_diploma <- read_csv(file.path(path_clean, "eu_mobility_prev_diploma_clean.csv"))
-# eu_mobility_citizenship <- read_csv(file.path(path_clean, "eu_mobility_citizenship_clean.csv"))
 unesco <- read_csv(file.path(path_clean, "unesco_clean.csv"))
 
-
 # 4. DESCRIPTIF GLOBAL DES FLUX ----
-
-# 4.1 Classement des nationalités par effectif moyen sur les 3 dernières rentrées
+## 4.1 Classement des nationalités par effectif moyen sur les 3 dernières rentrées----
 top_pays <- fr_effectifs_etudiants_etrangers_france %>% 
   group_by(nationalite) %>% 
   summarise(moy_mobiles = mean(total_mobiles, na.rm = TRUE)) %>% 
-  arrange(desc(moy_mobiles))
+  arrange(desc(moy_mobiles)) %>% 
+  head(n = 10)
 
-# 4.2 Part de chaque nationalité dans le total des étudiants mobiles en 2024
+## 4.2 Classement des nationalités en 2024 toutes filières confondues----
+# En part 
 top_pays_2024_percent <- fr_effectifs_etudiants_etrangers_france %>% 
   filter(rentree == "2024") %>% 
   mutate(part = total_mobiles / sum(total_mobiles, na.rm = TRUE)) %>% 
@@ -85,7 +80,14 @@ top_pays_2024_percent <- fr_effectifs_etudiants_etrangers_france %>%
   arrange(desc(part)) %>%
   head(n = 10)
 
-# 4.3 Evolution de la part des top 10 nationalités (2024) sur toutes les rentrées
+# En effectif brut
+top_pays_2024 <- fr_effectifs_etudiants_etrangers_france %>% 
+  filter(rentree == "2024") %>% 
+  select(nationalite, total_mobiles) %>%
+  arrange(desc(total_mobiles)) %>%
+  head(n = 10)
+
+# Evolution de la part des top 10 nationalités (2024) sur toutes les rentrées
 evol_top10 <- fr_effectifs_etudiants_etrangers_france %>%
   group_by(rentree) %>%
   mutate(part = total_mobiles / sum(total_mobiles, na.rm = TRUE)) %>%
@@ -93,14 +95,11 @@ evol_top10 <- fr_effectifs_etudiants_etrangers_france %>%
   filter(nationalite %in% (top_pays_2024_percent %>% 
                              pull(nationalite)))
 
-labels_evol <- evol_top10 %>%
-  filter(rentree == min(rentree) | rentree == max(rentree))
-
 plot_evol_top10 <- ggplot(evol_top10, aes(x = rentree, y = part, group = nationalite, color = nationalite)) +
   geom_line(linewidth = 1) +
   geom_point() +
   geom_text(
-    data = labels_evol,
+    data = (evol_top10 %>% filter(rentree == min(rentree) | rentree == max(rentree))),
     aes(label = scales::percent(part, accuracy = 0.1)),
     vjust = -0.8,
     size = 3,
@@ -122,7 +121,7 @@ plot_evol_top10_abs <- ggplot(evol_top10,
   geom_line(linewidth = 1) +
   geom_point() +
   geom_text(
-    data = labels_evol,
+    data = (evol_top10 %>% filter(rentree == min(rentree) | rentree == max(rentree))),
     aes(label = scales::number(total_mobiles, big.mark = " ")),
     vjust = -0.8,
     size = 3,
@@ -138,22 +137,211 @@ plot_evol_top10_abs <- ggplot(evol_top10,
   ) +
   theme_minimal()
 
-# 4.4 Top 10 des nationalités en écoles d'ingénieurs et de commerce en 2024 avec comparaison université pour ces mêmes pays
-top_pays_univ_vs_com_inge_2024 <- fr_effectifs_etudiants_etrangers_france %>% 
+## 4.3 Evolution des parts pour les top 10 en école de commerce----
+# En part 
+top_pays_2024_percent_commerce <- fr_effectifs_etudiants_etrangers_france %>% 
   filter(rentree == "2024") %>% 
-  mutate(mob_com_inge = mob_ec_commerce + mob_inge_hors_univ) %>% 
-  arrange(desc(mob_com_inge)) %>%
-  slice_head(n = 10) %>% 
-  select(nationalite, mob_univ, mob_com_inge) %>%
-  pivot_longer(
-    cols = c(mob_univ, mob_com_inge),
-    names_to = "type",
-    values_to = "effectif") %>%
-  mutate(type = recode(type,
-                       "mob_univ" = "Université",
-                       "mob_com_inge" = "Ecole d'ingénieur hors université et école de commerce"))
+  mutate(part = mob_ec_commerce / sum(mob_ec_commerce, na.rm = TRUE)) %>% 
+  arrange(desc(part)) %>%
+  head(n = 10)
 
-plot_effectifs_univ_vs_com_inge_2024 <- ggplot(top_pays_univ_vs_com_inge_2024, aes(x = nationalite, y = effectif, fill = type)) +
+# En effectif brut
+top_pays_2024_commerce <- fr_effectifs_etudiants_etrangers_france %>% 
+  filter(rentree == "2024") %>% 
+  arrange(desc(mob_ec_commerce)) %>%
+  head(n = 10)
+
+evol_top10_commerce <- fr_effectifs_etudiants_etrangers_france %>%
+  group_by(rentree) %>%
+  mutate(part = mob_ec_commerce / sum(mob_ec_commerce, na.rm = TRUE)) %>%
+  ungroup() %>%
+  filter(nationalite %in% (top_pays_2024_percent_commerce %>% pull(nationalite)))
+
+plot_evol_top10_commerce <- ggplot(evol_top10_commerce, aes(x = rentree, y = part, group = nationalite, color = nationalite)) +
+  geom_line(linewidth = 1) +
+  geom_point() +
+  geom_text(
+    data = (evol_top10_commerce %>%
+              filter(rentree == min(rentree) | rentree == max(rentree))),
+    aes(label = scales::percent(part, accuracy = 0.1)),
+    vjust = -0.8, size = 3, show.legend = FALSE
+  ) +
+  scale_y_continuous(labels = scales::percent) +
+  scale_color_brewer(palette = "Paired") +
+  labs(
+    title = "Évolution de la part des top 10 nationalités en école de commerce (2024-2025)",
+    subtitle = "Part calculée sur l'ensemble des étudiants mobiles en école de commerce",
+    x = "Rentrée universitaire", y = "Part (%)", color = ""
+  ) +
+  theme_minimal()
+
+plot_evol_top10_commerce_abs <- ggplot(evol_top10_commerce, 
+                              aes(x = rentree, y = mob_ec_commerce, group = nationalite, color = nationalite)) +
+  geom_line(linewidth = 1) +
+  geom_point() +
+  geom_text(
+    data = (evol_top10_commerce %>% filter(rentree == min(rentree) | rentree == max(rentree))),
+    aes(label = scales::number(mob_ec_commerce, big.mark = " ")),
+    vjust = -0.8,
+    size = 3,
+    show.legend = FALSE
+  ) +
+  scale_y_continuous(labels = scales::number_format(big.mark = " ")) +
+  scale_color_brewer(palette = "Paired") +
+  labs(
+    title = "Évolution en volume des top 10 nationalités en école de commerce (2024-2025)",
+    x = "Rentrée universitaire",
+    y = "Effectif",
+    color = "") +
+  theme_minimal()
+
+
+## 4.4 Evolution des parts pour les top 10 en école d'ingénieurs (hors université)----
+# En part
+top_pays_2024_percent_inge <- fr_effectifs_etudiants_etrangers_france %>%
+  filter(rentree == "2024") %>%
+  mutate(part = mob_inge_hors_univ / sum(mob_inge_hors_univ, na.rm = TRUE)) %>%
+  arrange(desc(part)) %>%
+  slice_head(n = 10)
+
+# En effectif brut
+top_pays_2024_inge <- fr_effectifs_etudiants_etrangers_france %>% 
+  filter(rentree == "2024") %>% 
+  arrange(desc(mob_inge_hors_univ)) %>%
+  head(n = 10)
+
+evol_top10_inge <- fr_effectifs_etudiants_etrangers_france %>%
+  group_by(rentree) %>%
+  mutate(part = mob_inge_hors_univ / sum(mob_inge_hors_univ, na.rm = TRUE)) %>%
+  ungroup() %>%
+  filter(nationalite %in% (top_pays_2024_percent_inge %>% pull(nationalite)))
+
+plot_evol_top10_inge <- ggplot(evol_top10_inge, aes(x = rentree, y = part, group = nationalite, color = nationalite)) +
+  geom_line(linewidth = 1) +
+  geom_point() +
+  geom_text(
+    data = (evol_top10_inge %>%
+              filter(rentree == min(rentree) | rentree == max(rentree))),
+    aes(label = scales::percent(part, accuracy = 0.1)),
+    vjust = -0.8, size = 3, show.legend = FALSE) +
+  scale_y_continuous(labels = scales::percent) +
+  scale_color_brewer(palette = "Paired") +
+  labs(
+    title = "Évolution de la part des top 10 nationalités en école d'ingénieurs (hors université)",
+    subtitle = "Part calculée sur l'ensemble des étudiants mobiles en école d'ingénieurs",
+    x = "Rentrée universitaire", y = "Part (%)", color = ""
+  ) +
+  theme_minimal()
+
+plot_evol_top10_inge_abs <- ggplot(evol_top10_inge, 
+                                       aes(x = rentree, y = mob_inge_hors_univ, group = nationalite, color = nationalite)) +
+  geom_line(linewidth = 1) +
+  geom_point() +
+  geom_text(
+    data = (evol_top10_inge %>% filter(rentree == min(rentree) | rentree == max(rentree))),
+    aes(label = scales::number(mob_inge_hors_univ, big.mark = " ")),
+    vjust = -0.8,
+    size = 3,
+    show.legend = FALSE
+  ) +
+  scale_y_continuous(labels = scales::number_format(big.mark = " ")) +
+  scale_color_brewer(palette = "Paired") +
+  labs(
+    title = "Évolution en volume des top 10 nationalités en école d'ingénieurs (hors université) (2024-2025)",
+    x = "Rentrée universitaire",
+    y = "Effectif",
+    color = "") +
+  theme_minimal()
+
+## 4.5 Classement des nationalités en 2024 par filières ----
+top_pays_univ_com_inge_2024 <- fr_effectifs_etudiants_etrangers_france %>%
+  filter(rentree == "2024") %>%
+  mutate(mob_com_inge = mob_ec_commerce + mob_inge_hors_univ) %>%
+  arrange(desc(mob_com_inge)) %>%
+  slice_head(n = 10) %>%
+  select(nationalite, mob_univ, mob_ec_commerce, mob_inge_hors_univ, mob_com_inge) %>%
+  pivot_longer(
+    cols = c(mob_univ, mob_ec_commerce, mob_inge_hors_univ, mob_com_inge),
+    names_to = "type", values_to = "effectif"
+  ) %>%
+  mutate(type = recode(type,
+                       "mob_univ"           = "Université",
+                       "mob_ec_commerce"    = "École de commerce",
+                       "mob_inge_hors_univ" = "École d'ingénieurs (hors université)",
+                       "mob_com_inge"       = "Commerce + Ingénieurs"))
+
+top_pays_parts_com_inge_2024 <- fr_effectifs_etudiants_etrangers_france %>%
+  filter(rentree == "2024") %>%
+  mutate(
+    mob_com_inge  = mob_ec_commerce + mob_inge_hors_univ,
+    part_univ     = mob_univ         / sum(mob_univ,         na.rm = TRUE),
+    part_commerce = mob_ec_commerce  / sum(mob_ec_commerce,  na.rm = TRUE),
+    part_inge     = mob_inge_hors_univ / sum(mob_inge_hors_univ, na.rm = TRUE),
+    part_com_inge = mob_com_inge     / sum(mob_com_inge,     na.rm = TRUE)) %>%
+  arrange(desc(part_com_inge)) %>%
+  slice_head(n = 10) %>%
+  select(nationalite, part_univ, part_commerce, part_inge, part_com_inge) %>%
+  pivot_longer(
+    cols = c(part_univ, part_commerce, part_inge, part_com_inge),
+    names_to = "type", values_to = "part") %>%
+  mutate(type = recode(type,
+                       "part_univ"     = "Université",
+                       "part_commerce" = "École de commerce",
+                       "part_inge"     = "École d'ingénieurs (hors université)",
+                       "part_com_inge" = "Commerce + Ingénieurs"))
+
+
+
+plot_parts_com_inge_detail_2024 <- top_pays_parts_com_inge_2024 %>%
+  filter(type != "Commerce + Ingénieurs") %>%
+  ggplot(aes(x = reorder(nationalite, part), y = part, fill = type)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = scales::percent(part, accuracy = 0.1)),
+            position = position_dodge(width = 0.9),
+            hjust = -0.1, size = 3) +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    title = "Part des nationalités dans les étudiants en mobilité en 2024-2025",
+    subtitle = "Université vs école de commerce vs école d'ingénieurs (détail)",
+    x = "Nationalité", y = "Part (%)", fill = ""
+  ) +
+  theme_minimal()
+
+plot_effectifs_univ_vs_com_inge_2024 <- top_pays_univ_com_inge_2024 %>%
+  filter(type %in% c("Université", "Commerce + Ingénieurs")) %>%
+  ggplot(aes(x = nationalite, y = effectif, fill = type)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = scales::number(effectif, big.mark = " ")),
+            position = position_dodge(width = 0.9),
+            hjust = -0.1, size = 3) +
+  coord_flip() +
+  labs(
+    title = "Top 10 des nationalités (école de commerce et ingénieur) en 2024-2025",
+    subtitle = "Comparaison Université vs école de commerce + ingénieurs",
+    x = "Nationalité", y = "Effectif", fill = ""
+  ) +
+  theme_minimal()
+
+plot_parts_univ_vs_com_inge_2024 <- top_pays_parts_com_inge_2024 %>%
+  filter(type %in% c("Université", "Commerce + Ingénieurs")) %>%
+  ggplot(aes(x = reorder(nationalite, part), y = part, fill = type)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = scales::percent(part, accuracy = 0.1)),
+            position = position_dodge(width = 0.9),
+            hjust = -0.1, size = 3) +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    title = "Part des nationalités dans les étudiants en mobilité en 2024-2025",
+    subtitle = "Université vs école de commerce + ingénieurs",
+    x = "Nationalité", y = "Part (%)", fill = ""
+  ) +
+  theme_minimal()
+
+plot_effectifs_univ_com_inge_2024 <- top_pays_univ_com_inge_2024 %>%
+  filter(type != "Commerce + Ingénieurs") %>%
+  ggplot(aes(x = reorder(nationalite, effectif), y = effectif, fill = type)) +
   geom_col(position = "dodge") +
   geom_text(aes(label = scales::number(effectif, big.mark = " ")),
             position = position_dodge(width = 0.9),
@@ -162,46 +350,11 @@ plot_effectifs_univ_vs_com_inge_2024 <- ggplot(top_pays_univ_vs_com_inge_2024, a
   coord_flip() +
   labs(
     title = "Top 10 des nationalités (école de commerce et ingénieur) en 2024-2025",
-    subtitle = "Comparaison Université vs école d'ingénieur hors université et école de commerce",
+    subtitle = "Comparaison Université vs école de commerce vs école d'ingénieurs",
     x = "Nationalité",
     y = "Effectif",
     fill = ""
   ) +
-  theme_minimal()
-
-# 4.5 Part des mêmes nationalités dans le total université et ingé+commerce
-top_pays_univ_vs_com_inge_2024_percent <- fr_effectifs_etudiants_etrangers_france %>% 
-  filter(rentree == "2024") %>% 
-  mutate(
-    mob_com_inge = mob_ec_commerce + mob_inge_hors_univ,
-    part_univ = mob_univ / sum(mob_univ, na.rm = TRUE),
-    part_com_inge = mob_com_inge / sum(mob_com_inge, na.rm = TRUE)
-  ) %>% 
-  arrange(desc(part_com_inge)) %>%
-  slice_head(n = 10) %>%
-  select(nationalite, part_univ, part_com_inge) %>%
-  pivot_longer(
-    cols = c(part_univ, part_com_inge),
-    names_to = "type",
-    values_to = "part") %>%
-  mutate(type = recode(type,
-                       "part_univ" = "Université",
-                       "part_com_inge" = "Ecole d'ingénieur hors université et école de commerce"))
-
-plot_parts_univ_vs_com_inge_2024 <- ggplot(top_pays_univ_vs_com_inge_2024_percent, aes(x = reorder(nationalite, part), y = part, fill = type)) +
-  geom_col(position = "dodge") +
-  geom_text(aes(label = scales::percent(part, accuracy = 0.1)),
-            position = position_dodge(width = 0.9),
-            hjust = -0.1,
-            size = 3) +
-  coord_flip() +
-  scale_y_continuous(labels = scales::percent) +
-  labs(
-    title = "Part des nationalités dans les étudiants en mobilité en 2024-2025",
-    subtitle = "Université vs école d'ingénieur hors université et école de commerce",
-    x = "Nationalité",
-    y = "Part (%)",
-    fill = "") +
   theme_minimal()
 
 # 5. DESCRIPTIF PAR TYPE DE FORMATION ----
@@ -280,20 +433,25 @@ etablissement_all <- annees %>%
 
 
 # 9. EXPORTS ----
-
 # Graphiques
-ggsave(file.path(path_outputs, "evol_top10_parts.png"),              plot_evol_top10,                      width = 12, height = 7, bg = "white")
-ggsave(file.path(path_outputs, "effectifs_univ_vs_com_inge_2024.png"), plot_effectifs_univ_vs_com_inge_2024, width = 10, height = 6, bg = "white")
-ggsave(file.path(path_outputs, "parts_univ_vs_com_inge_2024.png"),   plot_parts_univ_vs_com_inge_2024,     width = 10, height = 6, bg = "white")
-ggsave(file.path(path_outputs, "evol_top10_abs.png"),                plot_evol_top10_abs,                  width = 12, height = 7, bg = "white")
+ggsave(file.path(path_outputs, "evol_top10_parts.png"),              plot_evol_top10,                    width = 12, height = 7, bg = "white")
+ggsave(file.path(path_outputs, "evol_top10_abs.png"),                plot_evol_top10_abs,                width = 12, height = 7, bg = "white")
+ggsave(file.path(path_outputs, "evol_top10_commerce.png"),           plot_evol_top10_commerce,           width = 12, height = 7, bg = "white")
+ggsave(file.path(path_outputs, "evol_top10_commerce_abs.png"),       plot_evol_top10_commerce_abs,       width = 12, height = 7, bg = "white")
+ggsave(file.path(path_outputs, "evol_top10_inge.png"),               plot_evol_top10_inge,               width = 12, height = 7, bg = "white")
+ggsave(file.path(path_outputs, "evol_top10_inge_abs.png"),           plot_evol_top10_inge_abs,           width = 12, height = 7, bg = "white")
+ggsave(file.path(path_outputs, "effectifs_univ_vs_com_inge_2024.png"),plot_effectifs_univ_vs_com_inge_2024, width = 10, height = 6, bg = "white")
+ggsave(file.path(path_outputs, "effectifs_univ_com_inge_2024.png"),  plot_effectifs_univ_com_inge_2024,  width = 10, height = 6, bg = "white")
+ggsave(file.path(path_outputs, "parts_com_inge_detail_2024.png"),    plot_parts_com_inge_detail_2024,    width = 10, height = 6, bg = "white")
+ggsave(file.path(path_outputs, "parts_univ_vs_com_inge_2024.png"), plot_parts_univ_vs_com_inge_2024, width = 10, height = 6, bg = "white")
 
 # Tableaux Excel
 write_xlsx(
   list(
     "top_pays_moy_mobiles"          = top_pays,
     "top_pays_parts_2024"           = top_pays_2024_percent,
-    "top10_effectifs_univ_com_inge" = top_pays_univ_vs_com_inge_2024,
-    "top10_parts_univ_com_inge"     = top_pays_univ_vs_com_inge_2024_percent
+    "top10_effectifs_univ_com_inge" = top_pays_univ_com_inge_2024,
+    "top10_parts_univ_com_inge"     = top_pays_parts_com_inge_2024
   ),
   file.path(path_outputs, "descriptif_nationalites_2024.xlsx")
 )
@@ -301,7 +459,7 @@ write_xlsx(
 write_xlsx(
   list(
     "occitanie_part_region"      = top_pays_occitanie_2024_region,
-    "top_pays_idf_2024_region" = top_pays_idf_2024_region,
+    "top_pays_idf_2024_region"   = top_pays_idf_2024_region,
     "occitanie_part_nationalite" = top_pays_occitanie_2024_nationalite,
     "regions"                    = regions
   ),
