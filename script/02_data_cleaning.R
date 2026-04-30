@@ -38,7 +38,7 @@ write_csv_list <- function(data_list, path_processed) {
 
 # NETTOYAGE FRANCE | EFFECTIFS ETUDIANTS ETRANGERS
 fr_effectifs_etudiants_etrangers_france_clean <- fr_effectifs_etudiants_etrangers_france %>% 
-  filter(rentree >= 2021) %>% 
+  # filter(rentree >= 2021) %>% 
   mutate(
     iso3 = case_when(
       nationalite == "ACORES" ~ "PRT",
@@ -69,7 +69,7 @@ fr_effectifs_etudiants_etrangers_france_clean <- fr_effectifs_etudiants_etranger
     rentree = as.numeric(rentree))
 
 # NETTOYAGE FRANCE | EFFECTIFS ETUDIANTS ETRANGERS ETABLISSEMENTS
-etabs_cibles <- c("Sciences Po", "Université Paris Dauphine - PSL", "Université Toulouse Capitole", "Université Paris 1 - Panthéon Sorbonne")
+etabs_cibles <- c("Sciences Po", "Université Paris sciences et lettres", "Université Toulouse Capitole", "Université Paris 1 - Panthéon Sorbonne")
 fr_effectifs_etablissement_2022 <- fr_effectifs_etablissement_2022 %>% filter(etablissement %in% etabs_cibles)
 fr_effectifs_etablissement_2023 <- fr_effectifs_etablissement_2023 %>% filter(etablissement %in% etabs_cibles)
 fr_effectifs_etablissement_2024 <- fr_effectifs_etablissement_2024 %>% filter(etablissement %in% etabs_cibles)
